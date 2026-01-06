@@ -72,7 +72,7 @@ function showRobuxMenu(chatId, message = '💰 Выберите количест
             keyboard.push(row);
         }
         
-        keyboard.push([{ text: '◀️ Назад в главное меню' }]);
+        keyboard.push([{ text: '◀️ Назад в главное меню' }, { text: '🆘 Поддержка' }]);
         
         const opts = {
             reply_markup: {
@@ -109,6 +109,17 @@ async function cancelOrder(chatId) {
     }
 }
 
+async function sendSupportMessage(chatId) {
+    const supportMessage = '🆘 **Поддержка по невыполненным заказам**\n\n' +
+                         'Если ваш заказ не был выполнен, напишите напрямую:\n' +
+                         '👤 **@yokada_8007**\n\n' +
+                         'Опишите проблему и укажите ваш ID заказа или имя пользователя.\n' +
+                         'Мы ответим в течение 24 часов!';
+    
+    await bot.sendMessage(chatId, supportMessage, { parse_mode: 'Markdown' })
+        .catch(e => console.log('Ошибка поддержки:', e.message));
+}
+
 bot.on('message', async (msg) => {
     try {
         const chatId = msg.chat.id;
@@ -125,14 +136,7 @@ bot.on('message', async (msg) => {
         }
         
         if (text === '🆘 Поддержка') {
-            const supportMessage = '🆘 **Поддержка по невыполненным заказам**\n\n' +
-                                 'Если ваш заказ не был выполнен, напишите напрямую:\n' +
-                                 '👤 **@yokada_8007**\n\n' +
-                                 'Опишите проблему и укажите ваш ID заказа или имя пользователя.\n' +
-                                 'Мы ответим в течение 24 часов!';
-            
-            await bot.sendMessage(chatId, supportMessage, { parse_mode: 'Markdown' })
-                .catch(e => console.log('Ошибка поддержки:', e.message));
+            await sendSupportMessage(chatId);
             return;
         }
         
@@ -148,26 +152,28 @@ bot.on('message', async (msg) => {
             if (amountMatch) {
                 const amount = amountMatch[1];
                 if (prices[amount]) {
+                    const gamepassAmount = Math.round(prices[amount] * 1.3);
+                    
                     userOrders[chatId] = {
                         amount: amount,
                         price: prices[amount],
-                        gamepassAmount: Math.round(prices[amount] * 1.3)
+                        gamepassAmount: gamepassAmount
                     };
                     waitingForNickname[chatId] = true;
                     
                     const gamepassMessage = `⚠️ **ВАЖНАЯ ИНФОРМАЦИЯ!**\n\n` +
                                           `Вы выбрали **${amount} Robux**.\n\n` +
                                           `🔹 **ШАГ 1:** Создайте геймпасс в Roblox\n` +
-                                          `🔹 **ШАГ 2:** Установите цену геймпасса: **${userOrders[chatId].gamepassAmount} Robux**\n` +
+                                          `🔹 **ШАГ 2:** Установите цену геймпасса: **${gamepassAmount} Robux**\n` +
                                           `🔹 **ШАГ 3:** Отправьте мне **ссылку на ваш геймпасс** или **никнейм в Roblox**\n\n` +
-                                          `📝 *Сумма геймпасса = ${amount} (заказ) + 30% = ${userOrders[chatId].gamepassAmount} Robux*\n` +
-                                          `❌ Для отмены заказа используйте команду /cancel или кнопку ниже`;
+                                          `📝 *Сумма геймпасса = ${amount} (заказ) + 30% = ${gamepassAmount} Robux*\n\n` +
+                                          `❌ Для отмены заказа используйте кнопку ниже`;
                     
                     await bot.sendMessage(chatId, gamepassMessage, { 
                         parse_mode: 'Markdown',
                         reply_markup: {
                             keyboard: [
-                                [{ text: '❌ Отменить заказ' }]
+                                [{ text: '❌ Отменить заказ' }, { text: '🆘 Поддержка' }]
                             ],
                             resize_keyboard: true
                         }
@@ -203,9 +209,10 @@ bot.on('message', async (msg) => {
                                `🎮 Roblox ник: ${nickname}\n` +
                                `💰 Заказано: ${userOrders[chatId].amount} Robux\n` +
                                `💸 Сумма геймпасса: ${userOrders[chatId].gamepassAmount} Robux\n` +
+                               `📝 *Заказанная сумма: ${userOrders[chatId].amount} + 30% = ${userOrders[chatId].gamepassAmount} Robux*\n` +
                                `⏰ Время: ${new Date().toLocaleString('ru-RU')}`;
             
-            bot.sendMessage(SELLER_CHAT_ID, orderMessage, { parse_mode: 'Markdown' })
+            await bot.sendMessage(SELLER_CHAT_ID, orderMessage, { parse_mode: 'Markdown' })
                 .catch(e => console.log('Ошибка отправки продавцу:', e.message));
             
             const confirmation = `✅ **Заказ принят!**\n\n` +
