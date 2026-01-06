@@ -1,11 +1,9 @@
 const PORT = process.env.PORT || 3000;
 const http = require('http');
-
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('✅ VortexRobux Bot is running! Telegram: @VortexRobuxBot');
 });
-
 server.listen(PORT, () => {
     console.log(`🌐 Сервер запущен на порту ${PORT}`);
 });
@@ -43,7 +41,7 @@ bot.on('polling_error', (error) => {
     console.log('⚠️ Ошибка polling:', error.message);
 });
 
-function showMainMenu(chatId, message = '🚀 VortexRobux – твой мгновенный путь к богатству в Roblox!\n💎 Купи Robux быстро, безопасно и дешево!\n⚡ Мгновенная доставка | 🔒 Безопасные платежи | 🛡 Гарантия\n👉 Выбирай товар ниже и погрузись в игру с новыми возможностями!') {
+function showMainMenu(chatId, message = '🚀 VortexRobux – твой мгновенный путь к богатству в Roblox!\n💎 Купи Robux быстро, безопасно и дешево!\n⚡ Мгновенная доставка | 🔒 Безопасные платежи | 🛡 Гарантия\n👉 Выбирай действие ниже:') {
     try {
         const opts = {
             reply_markup: {
@@ -60,163 +58,185 @@ function showMainMenu(chatId, message = '🚀 VortexRobux – твой мгно�
     }
 }
 
+function showRobuxMenu(chatId, message = '💰 Выберите количество Robux для покупки:') {
+    try {
+        const keyboard = [];
+        const amounts = Object.keys(prices);
+        
+        for (let i = 0; i < amounts.length; i += 2) {
+            const row = [];
+            row.push({ text: `${amounts[i]} Robux` });
+            if (amounts[i + 1]) {
+                row.push({ text: `${amounts[i + 1]} Robux` });
+            }
+            keyboard.push(row);
+        }
+        
+        keyboard.push([{ text: '◀️ Назад в главное меню' }]);
+        
+        const opts = {
+            reply_markup: {
+                keyboard: keyboard,
+                resize_keyboard: true
+            }
+        };
+        bot.sendMessage(chatId, message, opts).catch(e => console.log('Ошибка отправки меню:', e.message));
+    } catch (e) {
+        console.log('Ошибка showRobuxMenu:', e.message);
+    }
+}
+
 bot.onText(/\/start/, (msg) => {
     console.log(`📨 /start от ${msg.chat.id}`);
     const chatId = msg.chat.id;
     showMainMenu(chatId);
 });
 
-bot.onText(/\/support/, async (msg) => {
-    const chatId = msg.chat.id;
-    const supportMessage = '🆘 Поддержка по невыполненным заказам\n\nЕсли ваш заказ не был выполнен, напишите напрямую:\n👤 @yokada_8007\n\nОпишите проблему и укажите ваш ID заказа.';
-    await bot.sendMessage(chatId, supportMessage).catch(e => console.log('Ошибка поддержки:', e.message));
-});
-
 bot.onText(/\/cancel/, async (msg) => {
     const chatId = msg.chat.id;
-    if (waitingForNickname[chatId]) {
+    await cancelOrder(chatId);
+});
+
+async function cancelOrder(chatId) {
+    if (waitingForNickname[chatId] || userOrders[chatId]) {
         delete waitingForNickname[chatId];
         delete userOrders[chatId];
         await bot.sendMessage(chatId, '✅ Заказ успешно отменен.').catch(e => console.log('Ошибка отмены:', e.message));
-        showMainMenu(chatId);
+        showMainMenu(chatId, '❌ Заказ отменен. Вы вернулись в главное меню.');
     } else {
         await bot.sendMessage(chatId, '❌ У вас нет активного заказа для отмены.').catch(e => console.log('Ошибка:', e.message));
+        showMainMenu(chatId);
     }
-});
+}
 
 bot.on('message', async (msg) => {
     try {
         const chatId = msg.chat.id;
         const text = msg.text;
+        const username = msg.from.username ? `@${msg.from.username}` : `${msg.from.first_name} ${msg.from.last_name || ''}`;
+        
         if (!text) return;
         
-        if (text === '🆘 Поддержка') {
-            console.log(`🆘 Кнопка поддержки нажата ${chatId}`);
-            const supportMessage = '🆘 Поддержка по невыполненным заказам\n\nЕсли ваш заказ не был выполнен, напишите напрямую:\n👤 @yokada_8007\n\nОпишите проблему и укажите ваш ID заказа.';
-            await bot.sendMessage(chatId, supportMessage).catch(e => console.log('Ошибка:', e.message));
+        console.log(`📩 Сообщение от ${chatId} (${username}): ${text}`);
+        
+        if (text === '🛒 Купить Robux') {
+            showRobuxMenu(chatId);
             return;
         }
         
-        if (text === '🏠 Главное меню') {
+        if (text === '🆘 Поддержка') {
+            const supportMessage = '🆘 **Поддержка по невыполненным заказам**\n\n' +
+                                 'Если ваш заказ не был выполнен, напишите напрямую:\n' +
+                                 '👤 **@yokada_8007**\n\n' +
+                                 'Опишите проблему и укажите ваш ID заказа или имя пользователя.\n' +
+                                 'Мы ответим в течение 24 часов!';
+            
+            await bot.sendMessage(chatId, supportMessage, { parse_mode: 'Markdown' })
+                .catch(e => console.log('Ошибка поддержки:', e.message));
+            return;
+        }
+        
+        if (text === '◀️ Назад в главное меню') {
             delete waitingForNickname[chatId];
             delete userOrders[chatId];
-            showMainMenu(chatId, 'Вы вернулись в главное меню!');
+            showMainMenu(chatId, 'Вы вернулись в главное меню.');
+            return;
+        }
+        
+        if (text.includes('Robux') && !waitingForNickname[chatId]) {
+            const amountMatch = text.match(/(\d+)\s*Robux/);
+            if (amountMatch) {
+                const amount = amountMatch[1];
+                if (prices[amount]) {
+                    userOrders[chatId] = {
+                        amount: amount,
+                        price: prices[amount],
+                        gamepassAmount: Math.round(prices[amount] * 1.3)
+                    };
+                    waitingForNickname[chatId] = true;
+                    
+                    const gamepassMessage = `⚠️ **ВАЖНАЯ ИНФОРМАЦИЯ!**\n\n` +
+                                          `Вы выбрали **${amount} Robux**.\n\n` +
+                                          `🔹 **ШАГ 1:** Создайте геймпасс в Roblox\n` +
+                                          `🔹 **ШАГ 2:** Установите цену геймпасса: **${userOrders[chatId].gamepassAmount} Robux**\n` +
+                                          `🔹 **ШАГ 3:** Отправьте мне **ссылку на ваш геймпасс** или **никнейм в Roblox**\n\n` +
+                                          `📝 *Сумма геймпасса = ${amount} (заказ) + 30% = ${userOrders[chatId].gamepassAmount} Robux*\n` +
+                                          `❌ Для отмены заказа используйте команду /cancel или кнопку ниже`;
+                    
+                    await bot.sendMessage(chatId, gamepassMessage, { 
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                            keyboard: [
+                                [{ text: '❌ Отменить заказ' }]
+                            ],
+                            resize_keyboard: true
+                        }
+                    });
+                } else {
+                    await bot.sendMessage(chatId, '❌ Неверное количество Robux. Пожалуйста, выберите из списка.');
+                    showRobuxMenu(chatId);
+                }
+            }
             return;
         }
         
         if (text === '❌ Отменить заказ') {
-            if (waitingForNickname[chatId]) {
-                delete waitingForNickname[chatId];
-                delete userOrders[chatId];
-                await bot.sendMessage(chatId, '✅ Заказ успешно отменен.').catch(e => console.log('Ошибка:', e.message));
-                showMainMenu(chatId);
-            } else {
-                await bot.sendMessage(chatId, '❌ У вас нет активного заказа для отмены.').catch(e => console.log('Ошибка:', e.message));
-            }
+            await cancelOrder(chatId);
             return;
         }
         
-        if (text === '🛒 Купить Robux' && !waitingForNickname[chatId]) {
-            const buttons = [];
-            const amounts = ['100', '200', '300', '400', '500', '600', '700', '800', '900', '1000'];
-            for (let i = 0; i < amounts.length; i += 2) {
-                const row = [];
-                row.push({
-                    text: `${amounts[i]} Robux - ${prices[amounts[i]]} руб.`,
-                    callback_data: amounts[i]
-                });
-                if (i + 1 < amounts.length) {
-                    row.push({
-                        text: `${amounts[i + 1]} Robux - ${prices[amounts[i + 1]]} руб.`,
-                        callback_data: amounts[i + 1]
-                    });
-                }
-                buttons.push(row);
+        if (waitingForNickname[chatId] && userOrders[chatId]) {
+            const nickname = text.trim();
+            
+            if (nickname.toLowerCase() === 'cancel' || nickname === '❌ отменить заказ') {
+                await cancelOrder(chatId);
+                return;
             }
-            const opts = { 
-                reply_markup: { inline_keyboard: buttons }
-            };
-            await bot.sendMessage(chatId, '🛒 VortexRobux\n\nМгновенная покупка Robux по лучшей цене! 💰\nНажми и закажи за пару минут! ⏱️', opts).catch(e => console.log('Ошибка:', e.message));
-            return;
-        }
-        
-        if (waitingForNickname[chatId] && text !== '🛒 Купить Robux' && !text.startsWith('/') && text !== '❌ Отменить заказ' && text !== '🆘 Поддержка' && text !== '🏠 Главное меню') {
-            console.log(`📝 Получен ник ${text} от ${chatId}`);
-            const nickname = text;
-            const amount = waitingForNickname[chatId].amount;
-            const price = prices[amount];
-            const userMessage = `✅ Заказ оформлен!\n\nСпасибо за покупку в VortexRobux! 💙\nТвои Robux уже в пути! Ожидай доставку в течение нескольких минут. 📨\n\nДетали заказа:\n👤 Ник в Roblox: ${nickname}\n🎮 Количество Robux: ${amount}\n💰 Сумма к оплате: ${price} руб.\n\nРеквизиты для оплаты:\n🏦 Банк: Сбербанк\n📞 Номер карты: 2202 2084 2717 8570\n\n⚠️ Важно:\n1. Сохраните скриншот чека об оплате\n2. После оплаты отправьте скриншот в этот чат\n3. Доставка начнется сразу после подтверждения оплаты\n\nПо вопросам — нажми кнопку «🆘 Поддержка»! 👨‍💻`;
-            const keyboardOpts = {
+            
+            userOrders[chatId].nickname = nickname;
+            userOrders[chatId].username = msg.from.username ? `@${msg.from.username}` : `${msg.from.first_name} ${msg.from.last_name || ''}`;
+            userOrders[chatId].userId = chatId;
+            
+            const orderMessage = `🛒 **НОВЫЙ ЗАКАЗ!**\n\n` +
+                               `👤 Покупатель: ${userOrders[chatId].username}\n` +
+                               `🆔 ID: ${chatId}\n` +
+                               `🎮 Roblox ник: ${nickname}\n` +
+                               `💰 Заказано: ${userOrders[chatId].amount} Robux\n` +
+                               `💸 Сумма геймпасса: ${userOrders[chatId].gamepassAmount} Robux\n` +
+                               `⏰ Время: ${new Date().toLocaleString('ru-RU')}`;
+            
+            bot.sendMessage(SELLER_CHAT_ID, orderMessage, { parse_mode: 'Markdown' })
+                .catch(e => console.log('Ошибка отправки продавцу:', e.message));
+            
+            const confirmation = `✅ **Заказ принят!**\n\n` +
+                               `📋 Детали заказа:\n` +
+                               `• Количество: ${userOrders[chatId].amount} Robux\n` +
+                               `• Ваш ник: ${nickname}\n` +
+                               `• Сумма геймпасса: ${userOrders[chatId].gamepassAmount} Robux\n\n` +
+                               `🔄 Продавец свяжется с вами в течение 15 минут.\n` +
+                               `⏳ Если заказ не выполнен в течение 24 часов, обратитесь в поддержку.\n\n` +
+                               `🆘 Поддержка: @yokada_8007`;
+            
+            await bot.sendMessage(chatId, confirmation, { 
+                parse_mode: 'Markdown',
                 reply_markup: {
                     keyboard: [
-                        [{ text: '❌ Отменить заказ' }, { text: '🏠 Главное меню' }],
+                        [{ text: '🛒 Купить еще Robux' }],
                         [{ text: '🆘 Поддержка' }]
                     ],
                     resize_keyboard: true
                 }
-            };
-            await bot.sendMessage(chatId, userMessage, keyboardOpts).catch(e => console.log('Ошибка покупателю:', e.message));
-            
-            const adminMessage = `🛒 НОВЫЙ ЗАКАЗ!\n\nНик в Roblox: ${nickname}\nПакет: ${amount} Robux\nСумма: ${price} руб.\nID покупателя: ${chatId}\nВремя: ${new Date().toLocaleString('ru-RU')}\n\nЧат с покупателем: tg://user?id=${chatId}`;
-            const adminKeyboard = {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '📨 Написать покупателю', url: `tg://user?id=${chatId}` },
-                            { text: '✅ Заказ выполнен', callback_data: `completed_${chatId}_${nickname}` }
-                        ]
-                    ]
-                }
-            };
-            
-            console.log(`📤 Отправляю заказ продавцу ${SELLER_CHAT_ID}`);
-            await bot.sendMessage(SELLER_CHAT_ID, adminMessage, adminKeyboard).catch(e => console.log('❌ Ошибка отправки продавцу:', e.message));
+            });
             
             delete waitingForNickname[chatId];
             delete userOrders[chatId];
         }
+        
     } catch (error) {
-        console.error('Ошибка обработки сообщения:', error.message);
+        console.error('❌ Ошибка в обработчике сообщений:', error.message);
     }
 });
 
-bot.on('callback_query', async (query) => {
-    try {
-        const chatId = query.message.chat.id;
-        const data = query.data;
-        if (data.startsWith('completed_')) {
-            const parts = data.split('_');
-            const buyerId = parts[1];
-            const nickname = parts[2];
-            await bot.sendMessage(buyerId, `🎉 Ваш заказ выполнен!\n\nRobux для аккаунта ${nickname} были успешно отправлены.\nСпасибо за покупку в VortexRobux! Приятной игры! 🎮`).catch(e => console.log('Ошибка:', e.message));
-            await bot.editMessageText(`✅ ЗАКАЗ ВЫПОЛНЕН\n\nПокупатель: ${nickname}\nID: ${buyerId}\nВремя выполнения: ${new Date().toLocaleString('ru-RU')}`, {
-                chat_id: chatId,
-                message_id: query.message.message_id
-            }).catch(e => console.log('Ошибка:', e.message));
-            await bot.answerCallbackQuery(query.id, { text: 'Покупатель уведомлен о выполнении заказа!' });
-            return;
-        }
-        const amount = data;
-        if (!userOrders[chatId]) userOrders[chatId] = {};
-        userOrders[chatId].amount = amount;
-        waitingForNickname[chatId] = { amount: amount };
-        await bot.deleteMessage(chatId, query.message.message_id).catch(e => console.log('Ошибка удаления:', e.message));
-        const keyboardOpts = {
-            reply_markup: {
-                keyboard: [
-                    [{ text: '❌ Отменить заказ' }, { text: '🏠 Главное меню' }]
-                ],
-                resize_keyboard: true
-            }
-        };
-        await bot.sendMessage(chatId, `Вы выбрали ${amount} Robux за ${prices[amount]} руб.\n\nТеперь введите ваш никнейм в Roblox:\n\nТочь-в-точь как в игре, без ошибок!`, keyboardOpts).catch(e => console.log('Ошибка:', e.message));
-    } catch (error) {
-        console.error('Ошибка callback:', error.message);
-    }
+bot.on('polling_error', (error) => {
+    console.error('Polling error:', error.code);
 });
-
-console.log('================================');
-console.log('🤖 VORTEXROBUX ЗАПУЩЕН НА RENDER!');
-console.log('🌐 Веб-сервер работает на порту:', PORT);
-console.log('👑 Продавец ID:', SELLER_CHAT_ID);
-console.log('================================');
