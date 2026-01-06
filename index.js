@@ -219,7 +219,9 @@ bot.on('message', async (msg) => {
                                `📋 Детали заказа:\n` +
                                `• Количество: ${userOrders[chatId].amount} Robux\n` +
                                `• Ваш ник: ${nickname}\n` +
-                               `• Сумма геймпасса: ${userOrders[chatId].gamepassAmount} Robux\n\n` +
+                               `• Сумма для геймпасса: ${userOrders[chatId].gamepassAmount} Robux\n\n` +
+                               `⚠️ **ВАЖНО:** Выставьте геймпасс в Roblox за **${userOrders[chatId].gamepassAmount} Robux**\n` +
+                               `📝 *Расчет: ${userOrders[chatId].amount} Robux (заказ) + 30% (комиссия Roblox) = ${userOrders[chatId].gamepassAmount} Robux*\n\n` +
                                `🔄 Продавец свяжется с вами в течение 15 минут.\n` +
                                `⏳ Если заказ не выполнен в течение 24 часов, обратитесь в поддержку.\n\n` +
                                `🆘 Поддержка: @yokada_8007`;
