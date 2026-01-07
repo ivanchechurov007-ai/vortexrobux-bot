@@ -37,11 +37,12 @@ const prices = {
     '600': 600, '700': 700, '800': 800, '900': 900, '1000': 1000
 };
 
-bot.on('polling_error', (error) => {
-    console.log('⚠️ Ошибка polling:', error.message);
-});
+// Функция для экранирования текста для Markdown
+function escapeMarkdown(text) {
+    return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+}
 
-// Функция главного меню
+// Главное меню
 function showMainMenu(chatId, message = '🚀 VortexRobux – твой мгновенный путь к богатству в Roblox!\n💎 Купи Robux быстро, безопасно и дешево!\n⚡ Мгновенная доставка | 🔒 Безопасные платежи | 🛡 Гарантия\n👉 Выбирай действие ниже:') {
     try {
         const opts = {
@@ -118,14 +119,13 @@ function cancelOrder(orderId, cancelledBy) {
         orders[orderId].status = 'cancelled';
         
         // Уведомляем покупателя
-        const buyerMessage = `❌ **Ваш заказ #${orderId} отменен**\n\n` +
-                           `📋 Детали заказа:\n` +
+        const buyerMessage = `❌ Ваш заказ #${orderId} отменен\n\n` +
+                           `Детали заказа:\n` +
                            `• Количество: ${order.amount} Robux\n` +
                            `• Отменен: ${cancelledBy === 'buyer' ? 'вами' : 'продавцом'}\n\n` +
                            `Если это ошибка, обратитесь в поддержку: @yokada_8007`;
         
         bot.sendMessage(order.buyerId, buyerMessage, {
-            parse_mode: 'Markdown',
             reply_markup: {
                 keyboard: [
                     [{ text: '🛒 Купить Robux' }],
@@ -153,13 +153,12 @@ function completeOrder(orderId) {
         orders[orderId].status = 'completed';
         
         // Уведомляем покупателя
-        const buyerMessage = `✅ **Ваш заказ #${orderId} выполнен!**\n\n` +
+        const buyerMessage = `✅ Ваш заказ #${orderId} выполнен!\n\n` +
                            `💰 Вы получили: ${order.amount} Robux\n` +
                            `🎮 Спасибо за покупку! Надеемся, вам понравится!\n\n` +
                            `📝 Если возникнут проблемы с получением Robux, обратитесь в поддержку: @yokada_8007`;
         
         bot.sendMessage(order.buyerId, buyerMessage, {
-            parse_mode: 'Markdown',
             reply_markup: {
                 keyboard: [
                     [{ text: '🛒 Купить Robux' }],
@@ -185,13 +184,13 @@ bot.on('message', (msg) => {
         
         // ========== КНОПКА ПОДДЕРЖКИ (РАБОТАЕТ ВСЕГДА) ==========
         if (text === '🆘 Поддержка') {
-            const supportMessage = '🆘 **Поддержка по невыполненным заказам**\n\n' +
+            const supportMessage = '🆘 Поддержка по невыполненным заказам\n\n' +
                                  'Если ваш заказ не был выполнен или у вас возникли вопросы, напишите напрямую:\n' +
-                                 '👤 **@yokada_8007**\n\n' +
+                                 '👤 @yokada_8007\n\n' +
                                  'Опишите проблему и укажите ваш ID заказа или имя пользователя.\n' +
                                  'Мы ответим в течение 24 часов!';
             
-            bot.sendMessage(chatId, supportMessage, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, supportMessage);
             return;
         }
         
@@ -227,17 +226,15 @@ bot.on('message', (msg) => {
                         date: new Date().toLocaleString('ru-RU')
                     };
                     
-                    const gamepassMessage = `⚠️ **ВАЖНАЯ ИНФОРМАЦИЯ!**\n\n` +
-                                          `Вы выбрали **${amount} Robux**.\n\n` +
-                                          `🔹 **ШАГ 1:** Создайте геймпасс в Roblox\n` +
-                                          `🔹 **ШАГ 2:** Установите цену геймпасса: **${gamepassAmount} Robux**\n` +
-                                          `🔹 **ШАГ 3:** Отправьте мне **ссылку на ваш геймпасс** или **никнейм в Roblox**\n\n` +
-                                          `📝 *Расчет геймпасса: ${amount} Robux (заказ) + 30% (комиссия Roblox) = ${gamepassAmount} Robux*\n\n` +
+                    const gamepassMessage = `⚠️ ВАЖНАЯ ИНФОРМАЦИЯ!\n\n` +
+                                          `Вы выбрали ${amount} Robux.\n\n` +
+                                          `🔹 ШАГ 1: Создайте геймпасс в Roblox\n` +
+                                          `🔹 ШАГ 2: Установите цену геймпасса: ${gamepassAmount} Robux\n` +
+                                          `🔹 ШАГ 3: Отправьте мне ссылку на ваш геймпасс или никнейм в Roblox\n\n` +
+                                          `📝 Сумма геймпасса = ${amount} (заказ) + 30% (комиссия Roblox) = ${gamepassAmount} Robux\n\n` +
                                           `❌ Для отмены заказа используйте /cancel или напишите "отмена"`;
                     
-                    bot.sendMessage(chatId, gamepassMessage, { 
-                        parse_mode: 'Markdown'
-                    });
+                    bot.sendMessage(chatId, gamepassMessage);
                 } else {
                     bot.sendMessage(chatId, '❌ Неверное количество Robux. Пожалуйста, выберите из списка.');
                     showRobuxMenu(chatId);
@@ -277,20 +274,19 @@ bot.on('message', (msg) => {
             };
             
             // Отправляем подтверждение покупателю
-            const confirmation = `✅ **Заказ оформлен!**\n\n` +
-                               `📋 **Детали вашего заказа:**\n\n` +
+            const confirmation = `✅ Заказ оформлен!\n\n` +
+                               `📋 Детали вашего заказа:\n\n` +
                                `🆔 Номер заказа: #${awaitingOrderId}\n` +
                                `💰 Количество: ${awaitingOrder.amount} Robux\n` +
                                `🎮 Ваш ник/ссылка: ${nickname}\n` +
                                `💎 Сумма геймпасса: ${awaitingOrder.gamepassAmount} Robux\n\n` +
-                               `⚠️ **ВАЖНО:** Выставьте геймпасс в Roblox за **${awaitingOrder.gamepassAmount} Robux**\n` +
-                               `📝 *Расчет: ${awaitingOrder.amount} Robux (заказ) + 30% (комиссия Roblox) = ${awaitingOrder.gamepassAmount} Robux*\n\n` +
-                               `⏳ **Статус:** Ожидает оплаты\n\n` +
-                               `💳 **Оплата:** После выставления геймпасса ожидайте, пока продавец свяжется с вами для оплаты.\n\n` +
-                               `📞 **Поддержка:** @yokada_8007`;
+                               `⚠️ ВАЖНО: Выставьте геймпасс в Roblox за ${awaitingOrder.gamepassAmount} Robux\n` +
+                               `📝 Расчет: ${awaitingOrder.amount} Robux (заказ) + 30% (комиссия Roblox) = ${awaitingOrder.gamepassAmount} Robux\n\n` +
+                               `⏳ Статус: Ожидает оплаты\n\n` +
+                               `💳 Оплата: После выставления геймпасса ожидайте, пока продавец свяжется с вами для оплаты.\n\n` +
+                               `📞 Поддержка: @yokada_8007`;
             
             bot.sendMessage(chatId, confirmation, { 
-                parse_mode: 'Markdown',
                 reply_markup: {
                     keyboard: [
                         [{ text: '🛒 Купить еще Robux' }],
@@ -311,19 +307,18 @@ bot.on('message', (msg) => {
 // Отправка заказа продавцу с кнопками
 function sendOrderToSeller(orderId, orderData) {
     try {
-        const buyerLink = orderData.buyerName.startsWith('@') 
-            ? `[${orderData.buyerName}](tg://user?id=${orderData.buyerId})`
-            : orderData.buyerName;
+        const safeBuyerName = escapeMarkdown(orderData.buyerName);
+        const safeNickname = escapeMarkdown(orderData.robloxNickname || '');
         
-        const orderMessage = `🛒 **НОВЫЙ ЗАКАЗ #${orderId}**\n\n` +
-                           `👤 **Покупатель:** ${buyerLink}\n` +
-                           `🆔 **ID:** ${orderData.buyerId}\n` +
-                           `🎮 **Roblox ник/ссылка:** ${orderData.robloxNickname}\n` +
-                           `💰 **Заказано:** ${orderData.amount} Robux\n` +
-                           `💎 **Сумма геймпасса:** ${orderData.gamepassAmount} Robux\n` +
-                           `📝 *Расчет: ${orderData.amount} + 30% = ${orderData.gamepassAmount} Robux*\n` +
-                           `⏰ **Время:** ${orderData.date}\n` +
-                           `📊 **Статус:** Ожидает оплаты`;
+        const orderMessage = `🛒 НОВЫЙ ЗАКАЗ #${orderId}\n\n` +
+                           `👤 Покупатель: ${safeBuyerName}\n` +
+                           `🆔 ID: ${orderData.buyerId}\n` +
+                           `🎮 Roblox ник/ссылка: ${safeNickname}\n` +
+                           `💰 Заказано: ${orderData.amount} Robux\n` +
+                           `💎 Сумма геймпасса: ${orderData.gamepassAmount} Robux\n` +
+                           `📝 Расчет: ${orderData.amount} + 30% = ${orderData.gamepassAmount} Robux\n` +
+                           `⏰ Время: ${orderData.date}\n` +
+                           `📊 Статус: Ожидает оплаты`;
         
         // Создаем inline-клавиатуру для продавца
         const keyboard = [
@@ -342,14 +337,19 @@ function sendOrderToSeller(orderId, orderData) {
                     text: '✅ Выполнил заказ',
                     callback_data: `seller_complete_${orderId}`
                 }
+            ],
+            [
+                {
+                    text: '🆘 Поддержка',
+                    callback_data: `seller_support_${orderId}`
+                }
             ]
         ];
         
         const opts = {
             reply_markup: {
                 inline_keyboard: keyboard
-            },
-            parse_mode: 'Markdown'
+            }
         };
         
         bot.sendMessage(SELLER_CHAT_ID, orderMessage, opts);
@@ -377,12 +377,11 @@ bot.on('callback_query', (callbackQuery) => {
             
             // Обновляем сообщение у продавца
             const originalText = callbackQuery.message.text;
-            const updatedText = originalText.replace('📊 **Статус:** Ожидает оплаты', '📊 **Статус:** ❌ Отменен продавцом');
+            const updatedText = originalText + '\n\n📊 Статус: ❌ Отменен продавцом';
             
             bot.editMessageText(updatedText, {
                 chat_id: chatId,
-                message_id: messageId,
-                parse_mode: 'Markdown'
+                message_id: messageId
             });
             
             bot.answerCallbackQuery(callbackQuery.id, { text: 'Заказ отменен!' });
@@ -394,19 +393,28 @@ bot.on('callback_query', (callbackQuery) => {
             
             // Обновляем сообщение у продавца
             const originalText = callbackQuery.message.text;
-            const updatedText = originalText.replace('📊 **Статус:** Ожидает оплаты', '📊 **Статус:** ✅ Выполнен');
+            const updatedText = originalText + '\n\n📊 Статус: ✅ Выполнен';
             
             bot.editMessageText(updatedText, {
                 chat_id: chatId,
-                message_id: messageId,
-                parse_mode: 'Markdown'
+                message_id: messageId
             });
             
             bot.answerCallbackQuery(callbackQuery.id, { text: 'Заказ отмечен как выполненный!' });
         }
+        
+        if (data.startsWith('seller_support_')) {
+            bot.answerCallbackQuery(callbackQuery.id, { 
+                text: 'Поддержка: @yokada_8007\nНапишите напрямую для помощи с заказом.' 
+            });
+        }
     } catch (e) {
         console.log('Ошибка в callback_query:', e.message);
     }
+});
+
+bot.on('polling_error', (error) => {
+    console.log('⚠️ Ошибка polling:', error.message);
 });
 
 console.log('🤖 Бот запущен и готов к работе!');
